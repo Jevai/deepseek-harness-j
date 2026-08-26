@@ -104,6 +104,18 @@ export function mapStopReason(message: AssistantMessage, contextWindow?: number)
       return { kind: 'stop' }
     case 'length': return { kind: 'max-tokens' }
     case 'toolUse': return { kind: 'tool-calls' }
+    // A terminal deferral means the provider finished with tool calls queued
+    // for deferred loading, which the harness runs as tool use rather than an
+    // outcome.
+    case 'deferred': return { kind: 'tool-calls' }
+    case 'pending':
+      return {
+        kind: 'error',
+        failure: {
+          message: `model "${message.model}" ended in the non-terminal pending state`,
+          code: EMPTY_RESPONSE_CODE,
+        },
+      }
     case 'aborted': return {
       kind: 'aborted',
       failure: { message: message.errorMessage ?? 'pi-ai stream aborted', code: 'ABORTED' },

@@ -385,6 +385,22 @@ export class PiAiAdapter extends LlmAdapter {
             exhausted = true
             return
           }
+          // pi-ai surfaces a caller abort as an `error` event whose message is
+          // the abort reason, not as an `aborted` stop reason or a throw, so the
+          // request's own signal decides how the harness reports it: an abort a
+          // caller requested is `aborted`, never a model-side `error`. The signal
+          // is still the caller's here because pi-ai only sees the watchdog's
+          // derived signal, which it reports in the event.
+          if (options.signal?.aborted && result.value.type === 'finish' && result.value.reason.kind === 'error') {
+            yield {
+              ...result.value,
+              reason: {
+                kind: 'aborted' as const,
+                failure: { message: 'pi-ai stream aborted', code: 'ABORTED' },
+              },
+            }
+            return
+          }
           yield result.value
         }
       } finally {
