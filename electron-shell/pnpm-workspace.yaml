@@ -1,0 +1,4 @@
+# 独立 workspace 根：防止 pnpm 向上解析到主仓库；
+# 放行 Electron 的 postinstall（下载平台二进制）。
+allowBuilds:
+  electron: true
