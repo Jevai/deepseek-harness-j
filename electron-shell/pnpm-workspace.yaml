@@ -1,4 +1,10 @@
 # 独立 workspace 根：防止 pnpm 向上解析到主仓库；
-# 放行 Electron 的 postinstall（下载平台二进制）。
+# 放行 Electron 相关包的 postinstall（下载平台二进制）。
 allowBuilds:
   electron: true
+  electron-winstaller: true
+
+# app-builder-lib 声明 ^3.0.0 却用了 3.1 才有的 CacheMode API；
+# 只对它升级，不动 electron 自带的 @electron/get@2。
+overrides:
+  'app-builder-lib>@electron/get': ^3.1.0

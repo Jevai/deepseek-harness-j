@@ -1,0 +1,26 @@
+appId: org.jevai.deepseekharness
+productName: DeepSeek Harness
+
+directories:
+  output: release
+
+files:
+  - main.js
+  - package.json
+  - build/icon.png
+
+# 运行时（runtime/，含 node_modules）经 afterPack 钩子整目录拷入 resources，
+# 不走 extraResources：其内置过滤会剪掉名为 node_modules 的目录。
+afterPack: scripts/pack-runtime.cjs
+
+win:
+  icon: build/icon.ico
+  target:
+    - target: nsis
+      arch:
+        - x64
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true

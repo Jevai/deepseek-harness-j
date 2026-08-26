@@ -1,0 +1,7 @@
+# 壳自身的构建/打包产物与运行时组装结果，不入库
+node_modules/
+runtime/
+release/
+
+# 本地调试日志（pnpm install / dist 的输出重定向），不入库
+*-log.txt

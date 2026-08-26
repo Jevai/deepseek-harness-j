@@ -3,16 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "description": "Electron desktop shell for the DeepSeek Harness web UI.",
+  "author": "Jevai",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "assemble": "node scripts/assemble-runtime.mjs",
+    "dist": "pnpm assemble && electron-builder --win"
   },
   "devDependencies": {
-    "electron": "^37.0.0"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "electron"
-    ]
+    "electron": "^37.0.0",
+    "electron-builder": "^26.15.3"
   }
 }

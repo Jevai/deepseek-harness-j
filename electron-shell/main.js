@@ -4,12 +4,12 @@
  * dsh-electron-shell — 把 DeepSeek Harness 的 Web GUI 包成桌面窗口。
  *
  * 职责边界（外挂壳路线，零侵入 harness 源码）：
- *   1. 以系统 Node 子进程方式启动已构建的 `dsh web` 服务（--no-open，端口可控）
+ *   1. 以独立 Node 子进程方式启动已构建的 `dsh web` 服务（--no-open，端口可控）
  *   2. 轮询服务就绪后，用 BrowserWindow 加载 GUI
  *   3. 窗口/应用退出时回收服务子进程
  *
- * 前置条件：仓库根目录已完成 `corepack pnpm install` 和
- * `corepack pnpm run build`（本壳直接运行构建产物 apps/cli/lib/bin.js）。
+ * 开发模式前置：仓库根目录已完成 `pnpm install` 和 `pnpm run build`
+ * （本壳直接运行构建产物 apps/cli/lib/bin.js）。
  */
 
 const { app, BrowserWindow, dialog } = require('electron')
@@ -18,15 +18,43 @@ const http = require('node:http')
 const path = require('node:path')
 const fs = require('node:fs')
 
-/** fork 仓库根目录（electron-shell 的上一级）。 */
+/**
+ * 开发模式：直接引用 fork 仓库的构建产物（上一级目录）。
+ * 打包模式：服务运行时整体在 resources/runtime（assemble-runtime.mjs 产物），
+ * 并自带 node.exe，不要求目标机器装 Node。
+ */
+const isPackaged = app.isPackaged
+/** fork 仓库根目录（仅开发模式使用）。 */
 const REPO_ROOT = path.resolve(__dirname, '..')
+/** 运行时根：开发模式是仓库布局；打包模式是 extraResources/runtime。 */
+const RUNTIME_ROOT = isPackaged ? path.join(process.resourcesPath, 'runtime') : REPO_ROOT
 /** 已构建的 dsh CLI 入口。 */
-const CLI_BIN = path.join(REPO_ROOT, 'apps', 'cli', 'lib', 'bin.js')
+const CLI_BIN = isPackaged
+  ? path.join(RUNTIME_ROOT, 'lib', 'bin.js')
+  : path.join(RUNTIME_ROOT, 'apps', 'cli', 'lib', 'bin.js')
 
-/** 服务绑定地址；与 web profile 默认一致。 */
+/**
+ * 解析用于跑服务的 Node 可执行文件。
+ * 打包模式必须用运行时自带的 Node，不依赖目标机器 PATH；
+ * Electron 内置 Node 版本不保证满足 DSH engines（^22.19 || >=24），不用。
+ */
+function resolveNodeExe() {
+  if (!isPackaged) return process.platform === 'win32' ? 'node.exe' : 'node'
+  const bundled = process.platform === 'win32'
+    ? path.join(RUNTIME_ROOT, 'node.exe')
+    : path.join(RUNTIME_ROOT, 'node')
+  if (!fs.existsSync(bundled)) {
+    dialog.showErrorBox('缺少内置 Node', `打包产物缺 ${bundled}；请重新执行 pnpm assemble 再打包。`)
+    app.quit()
+    return null
+  }
+  return bundled
+}
+
+/** 服务绑定地址。 */
 const HOST = '127.0.0.1'
-/** 监听端口；可用环境变量 DSH_SHELL_PORT 覆盖。 */
-const PORT = Number.parseInt(process.env.DSH_SHELL_PORT ?? '3080', 10)
+/** 监听端口；默认避开原版 DSH 的 3080，可用环境变量 DSH_SHELL_PORT 覆盖。 */
+const PORT = Number.parseInt(process.env.DSH_SHELL_PORT ?? '3081', 10)
 const BASE_URL = `http://${HOST}:${PORT}`
 
 /** 就绪轮询间隔与总超时：harness 冷启动可能较慢，给足余量。 */
@@ -37,26 +65,27 @@ let serverProc = null
 let mainWindow = null
 let quitting = false
 
-/**
- * 启动 DSH web 服务子进程。
- * 必须用系统 Node 而不是 Electron 自带的 Node：
- * DSH engines 要求 ^22.19 || >=24，Electron 内置 Node 版本不保证满足。
- */
+/** 启动 DSH web 服务子进程。 */
 function startServer() {
   if (!fs.existsSync(CLI_BIN)) {
     dialog.showErrorBox(
       'DSH 尚未构建',
-      `找不到构建产物：\n${CLI_BIN}\n\n请先在仓库根目录执行：\n  corepack pnpm install\n  corepack pnpm run build`,
+      isPackaged
+        ? `打包产物不完整：\n${CLI_BIN}\n\n请重新执行 pnpm assemble 后再打包。`
+        : `找不到构建产物：\n${CLI_BIN}\n\n请先在仓库根目录执行：\n  pnpm install\n  pnpm run build`,
     )
     app.quit()
     return null
   }
 
+  const nodeExe = resolveNodeExe()
+  if (nodeExe === null) return null
+
   const child = spawn(
-    process.platform === 'win32' ? 'node.exe' : 'node',
+    nodeExe,
     [CLI_BIN, 'web', '--no-open', '--port', String(PORT)],
     {
-      cwd: REPO_ROOT,
+      cwd: RUNTIME_ROOT,
       stdio: ['ignore', 'pipe', 'pipe'],
       windowsHide: true,
     },
@@ -131,6 +160,7 @@ async function createWindow() {
     minWidth: 960,
     minHeight: 600,
     title: 'DeepSeek Harness',
+    icon: path.join(__dirname, 'build', 'icon.png'),
     show: false,
     backgroundColor: '#111111',
     webPreferences: {
@@ -140,8 +170,15 @@ async function createWindow() {
     },
   })
 
+  // 自用调试口：F12 切换开发者工具，开发和打包版都启用。
+  // before-input-event 只在窗口聚焦时触发，不会抢占系统全局 F12。
+  win.webContents.on('before-input-event', (_event, input) => {
+    if (input.type === 'keyDown' && input.key === 'F12') {
+      win.webContents.toggleDevTools()
+    }
+  })
+
   win.once('ready-to-show', () => win.show())
-  // 防止页面标题覆盖窗口标题后缀丢失应用名（保留默认行为亦可，这里不强改）。
 
   try {
     await waitForServer(`${BASE_URL}/`, READY_TIMEOUT_MS)
