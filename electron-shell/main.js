@@ -12,7 +12,7 @@
  * （本壳直接运行构建产物 apps/cli/lib/bin.js）。
  */
 
-const { app, BrowserWindow, dialog } = require('electron')
+const { app, BrowserWindow, dialog, Menu } = require('electron')
 const { spawn } = require('node:child_process')
 const http = require('node:http')
 const path = require('node:path')
@@ -172,9 +172,31 @@ async function createWindow() {
 
   // 自用调试口：F12 切换开发者工具，开发和打包版都启用。
   // before-input-event 只在窗口聚焦时触发，不会抢占系统全局 F12。
+  // 菜单栏已通过 Menu.setApplicationMenu(null) 移除，原默认菜单附带的
+  // 快捷键在这里手动保留：Ctrl+R / Ctrl+Shift+R 刷新、Ctrl+Shift+I
+  // 开发者工具、F11 全屏、Ctrl+0/=/- 缩放、Ctrl+W 关闭、Ctrl+Q 退出。
   win.webContents.on('before-input-event', (_event, input) => {
-    if (input.type === 'keyDown' && input.key === 'F12') {
+    if (input.type !== 'keyDown') return
+    const key = input.key.toLowerCase()
+    const ctrl = input.control || input.meta
+    if (input.key === 'F12' || (ctrl && input.shift && key === 'i')) {
       win.webContents.toggleDevTools()
+    } else if (ctrl && input.shift && key === 'r') {
+      win.webContents.reloadIgnoringCache()
+    } else if (ctrl && !input.shift && key === 'r') {
+      win.webContents.reload()
+    } else if (input.key === 'F11') {
+      win.setFullScreen(!win.isFullScreen())
+    } else if (ctrl && !input.shift && key === '0') {
+      win.webContents.setZoomLevel(0)
+    } else if (ctrl && !input.shift && (key === '=' || key === '+')) {
+      win.webContents.setZoomLevel(Math.min(3, win.webContents.getZoomLevel() + 0.5))
+    } else if (ctrl && !input.shift && key === '-') {
+      win.webContents.setZoomLevel(Math.max(-3, win.webContents.getZoomLevel() - 0.5))
+    } else if (ctrl && !input.shift && key === 'w') {
+      win.close()
+    } else if (ctrl && !input.shift && key === 'q') {
+      app.quit()
     }
   })
 
@@ -201,6 +223,12 @@ if (!gotLock) {
       mainWindow.focus()
     }
   })
+
+  // 移除 Electron 默认应用菜单栏（File/Edit/View/Window/Help）。
+  // 该菜单栏对 web 界面无实际用途，且在 Windows 上按 Alt 会误触弹出。
+  // 原默认菜单附带的快捷键（刷新 / 全屏 / 缩放 / 关闭等）在下方
+  // before-input-event 中手动保留，功能不变。
+  Menu.setApplicationMenu(null)
 
   app.whenReady().then(async () => {
     serverProc = startServer()
