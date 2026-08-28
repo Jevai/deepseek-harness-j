@@ -9,7 +9,7 @@
  * menu in between; the flow and its error dialog live in WorkspacePicker
  * (same package — direct composition, no slot between them).
  */
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import clsx from 'clsx'
 import {
   Button, IconCloseFill14, IconPersonalizationOutline16,
@@ -18,7 +18,7 @@ import {
 import type {
   SessionId, SessionListState, SessionSearchResultItem, WorkspaceId, WorkspaceView,
 } from '@deepseek-ai/dsh-client-runtime/client'
-import type { WorkspaceBrowserProps } from './contract/slots.ts'
+import type { WorkspaceBrowserProps, WorkspaceRowActionOwnerProps } from './contract/slots.ts'
 import type { SessionNode, SessionOrderBy } from './tree.ts'
 import { deriveFlat, deriveGroups, deriveSearchResults, UNGROUPED_KEY } from './tree.ts'
 import { ProjectRowItem, SearchResultItem, SessionNodeItem } from './rows/Rows.tsx'
@@ -245,6 +245,8 @@ type SessionTreeProps = Pick<
   onSessionArchive: (sessionId: SessionNode['id']) => void
   /** Session order behavior: fixed after edits, or additionally promoted by user activity. */
   orderBy: SessionOrderBy
+  /** Render one per-workspace row action (the browser binds the item.actions slot). */
+  renderItemActions: (owner: WorkspaceRowActionOwnerProps) => ReactNode
 }
 
 /** The scrolling session tree; unmounting drops the sessions subscription and expand-all state. */
@@ -253,7 +255,7 @@ function SessionTree({
   onRenameRequest, onDeleteRequest, onSessionRename, onSessionArchive,
   insertWorkspaceBefore, insertSessionBefore, orderBy,
   groupExpansion, setGroupExpanded,
-  sessionOrderByAccount, sessionUpdatedAtByAccount, syncSessionOrderAccount, setSessionOrder, home, t,
+  sessionOrderByAccount, sessionUpdatedAtByAccount, syncSessionOrderAccount, setSessionOrder, home, renderItemActions, t,
 }: SessionTreeProps) {
   const list = useSessions(s => s)
   const current = list.current
@@ -479,6 +481,7 @@ function SessionTree({
                       if (group.workspaceId !== undefined) onDeleteRequest(group.workspaceId, group.label)
                     },
                   }}
+                renderItemActions={group.workspaceId === undefined ? undefined : renderItemActions}
               />
               {(expandedSessionGroups.includes(group.key)
                 ? group.sessions
@@ -1189,6 +1192,7 @@ export function WorkspaceBrowser({
                 orderBy={orderBy}
                 home={home}
                 t={t}
+                renderItemActions={owner => renderSlot('sidebar.workspaces.item.actions', owner)}
                 onRenameRequest={(workspaceId, currentTitle) => {
                   setRenameTarget({ workspaceId, currentTitle })
                   setRenameDraft(currentTitle)

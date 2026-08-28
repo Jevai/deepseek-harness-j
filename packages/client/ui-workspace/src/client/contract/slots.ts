@@ -51,12 +51,29 @@ export interface DirectoryFlowOwnerProps {
   onError: (message: string) => void
 }
 
+/** Owner share of one per-workspace row action (rendered in the row's hover action cluster). */
+export interface WorkspaceRowActionOwnerProps {
+  /** Real-Workspace id of the row; the ungrouped bucket renders no action hole. */
+  workspaceId: WorkspaceId
+  /** Row display title (workspace title). */
+  title: string
+}
+
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface SlotMap {
     /** Directory-flow hole under the conversation empty-state picker (declared by the WorkspacePicker entry). */
     'conversation.hero.workspace.directoryFlow': { kind: 'single'; scope: 'root'; owner: DirectoryFlowOwnerProps }
     /** Directory-flow hole under the sidebar browsing region (declared by the WorkspaceBrowser entry). */
     'sidebar.workspaces.directoryFlow': { kind: 'single'; scope: 'root'; owner: DirectoryFlowOwnerProps }
+    /**
+     * One action in a Workspace browser row's hover action cluster (next to
+     * the row menu and the New Session button) — the additive way to attach
+     * a per-workspace control to the browsing region. Entries render by
+     * ascending `order`; the owner passes the real Workspace identity only,
+     * and the directory path stays host-side (never crosses the wire into
+     * the slot).
+     */
+    'sidebar.workspaces.item.actions': { kind: 'list'; scope: 'root'; owner: WorkspaceRowActionOwnerProps }
   }
 }
 
@@ -142,7 +159,7 @@ export type WorkspaceBrowserInjected = {
 /** Full browser props: shell owner share + viewing store + injected actions + the locale seat. */
 export type WorkspaceBrowserProps =
   PropsRuntime<'sidebar.workspaces'>
-  & PropsRenderSlots<'sidebar.workspaces.directoryFlow'>
+  & PropsRenderSlots<'sidebar.workspaces.item.actions' | 'sidebar.workspaces.directoryFlow'>
   & PropsStore<ReturnType<typeof createWorkspaceViewStore>>
   & Omit<WorkspaceBrowserInjected, 'hooks'>
   & PropsHooks<WorkspaceBrowserInjected['hooks']>

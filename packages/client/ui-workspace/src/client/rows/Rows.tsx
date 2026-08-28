@@ -6,6 +6,7 @@
  * and workspace hover cards are suppressed while a menu is open.
  */
 import { useState } from 'react'
+import type { ReactNode } from 'react'
 import clsx from 'clsx'
 import {
   HoverCard, IconArchiveOutline20, IconBranchOutline16, IconEditOutline16,
@@ -14,7 +15,7 @@ import {
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { StateDotState } from '@deepseek-ai/dsh-client-ui-primitives'
 import { abbreviateHomePath } from '@deepseek-ai/dsh-client-runtime/client'
-import type { WorkspaceBrowserProps } from '../contract/slots.ts'
+import type { WorkspaceBrowserProps, WorkspaceRowActionOwnerProps } from '../contract/slots.ts'
 import type { GroupNode, SearchResultNode, SessionNode } from '../tree.ts'
 import { relativeTime } from '../tree.ts'
 import css from './Rows.module.css'
@@ -109,7 +110,7 @@ function rowHalf(e: { clientY: number; currentTarget: HTMLElement }): 'before' |
  * @param props.t - the browser root's locale seat.
  * @returns the row element.
  */
-export function ProjectRowItem({ group, onToggle, onCreate, actions, drag, home, t }: {
+export function ProjectRowItem({ group, onToggle, onCreate, actions, drag, home, renderItemActions, t }: {
   group: GroupNode
   onToggle: () => void
   onCreate: () => void
@@ -119,6 +120,8 @@ export function ProjectRowItem({ group, onToggle, onCreate, actions, drag, home,
   drag?: WorkspaceRowDragProps | undefined
   /** Host account home; POSIX home-rooted hover paths display as `~`. */
   home?: string | undefined
+  /** Render one per-workspace row action (the browser binds the item.actions slot). */
+  renderItemActions?: ((owner: WorkspaceRowActionOwnerProps) => ReactNode) | undefined
   t: RowTranslate
 }) {
   const row = group
@@ -184,6 +187,9 @@ export function ProjectRowItem({ group, onToggle, onCreate, actions, drag, home,
             )}
           />
         )}
+        {group.workspaceId !== undefined
+          && renderItemActions !== undefined
+          && renderItemActions({ workspaceId: group.workspaceId, title: label })}
         <button
           type="button"
           className={css.iconButton}

@@ -128,6 +128,35 @@ describe('workspace browser rows', () => {
     expect(onToggle).toHaveBeenCalledOnce()
   })
 
+  it('renders row item actions next to the create button for a real Workspace', () => {
+    const group: GroupNode = {
+      key: 'project', workspaceId: wid('project'), cwd: '/projects/project', createdAt: 0, label: 'Project',
+      sessionCount: 1, expanded: true, containsCurrent: true, sessions: [],
+    }
+    const renderItemActions = vi.fn((_owner: { workspaceId: WorkspaceId; title: string }) => (
+      <button type="button" data-testid="row-item-action">VS</button>
+    ))
+    render(<ProjectRowItem group={group} onToggle={vi.fn()} onCreate={vi.fn()} t={t}
+      actions={{ rename: vi.fn(), delete: vi.fn() }} renderItemActions={renderItemActions} />)
+
+    expect(renderItemActions).toHaveBeenCalledWith({ workspaceId: wid('project'), title: 'Project' })
+    const button = screen.getByTestId('row-item-action')
+    expect(button.nextElementSibling?.getAttribute('aria-label')).toMatch(/新建会话/)
+  })
+
+  it('omits row item actions for the ungrouped bucket', () => {
+    const renderItemActions = vi.fn(() => <button type="button" data-testid="row-item-action">VS</button>)
+    const group: GroupNode = {
+      key: 'ungrouped', workspaceId: undefined, cwd: undefined, createdAt: undefined, label: '未分组',
+      sessionCount: 2, expanded: true, containsCurrent: false, sessions: [],
+    }
+    render(<ProjectRowItem group={group} onToggle={vi.fn()} onCreate={vi.fn()} t={t}
+      renderItemActions={renderItemActions} />)
+
+    expect(renderItemActions).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('row-item-action')).toBeNull()
+  })
+
   it('renders and opens a selected running Session row', () => {
     const node: SessionNode = {
       id: sid('session'), title: 'Session', blank: false, running: true,
