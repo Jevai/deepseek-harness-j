@@ -150,3 +150,7 @@ Docs accompany every code change: update affected README and JSDoc contracts tog
 ## Vendoring policy
 
 `vendor/` packages are pinned source copies (manifest with upstream SHAs in [vendor/README.md](vendor/README.md)). Update via the sync procedure there; re-apply or retire the logged local modifications; rerun `pnpm run test && pnpm run build`.
+
+## Electron desktop shell
+
+`electron-shell/` is the local desktop wrapper: `electron .` spawns this repo's built `dsh web` (apps/cli/lib/bin.js) on `DSH_SHELL_PORT` (default 3081) and loads it in the window; dev-mode `main.js` edits apply on window restart, no repack. Parallel windows need a distinct `--user-data-dir` (single-instance lock is per userData) and a distinct port; check `Get-NetTCPConnection -State Listen` before choosing one.
