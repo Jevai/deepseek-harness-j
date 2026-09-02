@@ -18,6 +18,7 @@ const http = require('node:http')
 const path = require('node:path')
 const fs = require('node:fs')
 const { guardBrokenPipe } = require('./broken-pipe-guard.js')
+const { formatWindowTitle } = require('./window-title.js')
 
 // 输出管道对端关闭时 console 写入会抛 EPIPE 并被当成主进程未捕获异常弹窗；吞掉它。
 guardBrokenPipe(process.stdout)
@@ -164,7 +165,7 @@ async function createWindow() {
     height: 960,
     minWidth: 960,
     minHeight: 600,
-    title: 'DeepSeek Harness',
+    title: formatWindowTitle(HOST, PORT),
     icon: path.join(__dirname, 'build', 'icon.png'),
     show: false,
     backgroundColor: '#111111',
@@ -203,6 +204,12 @@ async function createWindow() {
     } else if (ctrl && !input.shift && key === 'q') {
       app.quit()
     }
+  })
+
+  // 窗口标题固定携带监听地址，避免被页面 document.title 覆盖。
+  win.on('page-title-updated', (event) => {
+    event.preventDefault()
+    win.setTitle(formatWindowTitle(HOST, PORT))
   })
 
   win.once('ready-to-show', () => win.show())
