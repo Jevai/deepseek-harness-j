@@ -145,7 +145,7 @@
     "mock:llm": "node --import tsx packages/test-support/llm-mock-server/src/bin.ts",
     "dev:web": "tsx scripts/dev-web.ts --poll",
     "postinstall": "node scripts/install-lefthook.mjs && pnpm --dir electron-shell install",
-    "desktop-win:dev": "electron ./electron-shell"
+    "desktop-win:dev": "cd electron-shell && electron ."
   },
   "devDependencies": {
     "@agentclientprotocol/sdk": "0.25.1",
