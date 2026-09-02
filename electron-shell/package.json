@@ -8,7 +8,8 @@
   "scripts": {
     "start": "electron .",
     "assemble": "node scripts/assemble-runtime.mjs",
-    "dist": "pnpm assemble && electron-builder --win"
+    "dist": "pnpm assemble && electron-builder --win",
+    "test": "node --test test/*.test.cjs"
   },
   "devDependencies": {
     "electron": "^37.0.0",

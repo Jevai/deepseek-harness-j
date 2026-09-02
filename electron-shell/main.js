@@ -17,6 +17,11 @@ const { spawn } = require('node:child_process')
 const http = require('node:http')
 const path = require('node:path')
 const fs = require('node:fs')
+const { guardBrokenPipe } = require('./broken-pipe-guard.js')
+
+// 输出管道对端关闭时 console 写入会抛 EPIPE 并被当成主进程未捕获异常弹窗；吞掉它。
+guardBrokenPipe(process.stdout)
+guardBrokenPipe(process.stderr)
 
 /**
  * 开发模式：直接引用 fork 仓库的构建产物（上一级目录）。
